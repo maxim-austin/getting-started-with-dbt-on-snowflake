@@ -17,8 +17,8 @@ jobs:
       SNOWFLAKE_CLI_FEATURES_ENABLE_DBT: true
       SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
       # SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PAT }} # Snowflake password is required if you aren't using OIDC
-      SNOWFLAKE_DATABASE: ${{ vars.SNOWFLAKE_DATABASE }}
-      SNOWFLAKE_SCHEMA: ${{ vars.SNOWFLAKE_SCHEMA }}
+      SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
+      SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA_PROD }}
 
     steps:
       # Check out repository code
@@ -41,10 +41,14 @@ jobs:
       # You can remove the "--source" flag if your dbt_project.yml is at root of your repo
       # The --default-target flag ensures the dbt project object compiles and executes with your prod target
       - name: Create a new dbt project object in ${{ vars.SNOWFLAKE_DATABASE }}.${{ vars.SNOWFLAKE_SCHEMA }}
-        run: snow dbt deploy tasty_bytes_dbt_object_gh_action --source ./tasty_bytes --default-target prod --dbt-version 1.10.15 --force -x
+        run: snow dbt deploy tasty_bytes_dbt_object_prod --source ./tasty_bytes_dbt_demo --default-target prod --dbt-version 1.10.15 --external-access-integration DBT_EXT_ACCESS -x
 
       - name: List all of the snowflake dbt project objects on your account
         run: snow dbt list -x
+
+      # Builds all models and runs tests in DAG order, failing early if any upstream test breaks
+      - name: Build and test dbt project in ${{ vars.SNOWFLAKE_DATABASE }}.${{ vars.SNOWFLAKE_SCHEMA }}
+        run: snow dbt execute -x tasty_bytes_dbt_object_prod build --target prod  
 
       # (optional) Uncomment the lines below and follow Step 7 if you want to manage Task orchestration via source control
       # - name: Run schedules.sql to create or alter tasks for tasty_bytes_dbt_object_gh_action
